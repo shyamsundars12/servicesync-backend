@@ -7,16 +7,32 @@ const fileUpload = require('express-fileupload');
 const cors = require('cors');
 require('dotenv').config();
 
-// Routers
-const custRouter = require('./src/router/customerRouter');
-const empRouter = require('./src/router/employeeRouter');
-const empSerRouter = require('./src/router/employeeServiceRouter');
-const feedbackRouter = require('./src/router/feedbackRouter');
-const serviceRouter = require('./src/router/serviceRouter');
-const orderRouter = require('./src/router/orderRouter');
-const addOnRouter = require('./src/router/addOnRouter');
-const loginRouter = require('./src/router/loginRouter');
-const adminRouter = require('./src/router/adminRouter');
+// MongoDB connection optimization (cache it globally)
+let cachedDb = global.mongoose;
+
+if (!cachedDb) {
+  cachedDb = global.mongoose = { conn: null, promise: null };
+}
+
+async function connectToDatabase() {
+  if (cachedDb.conn) return cachedDb.conn;
+
+  if (!cachedDb.promise) {
+    cachedDb.promise = mongoose.connect(process.env.MONGO_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true
+    }).then((mongoose) => {
+      console.log("✅ MongoDB connected");
+      return mongoose;
+    });
+  }
+
+  cachedDb.conn = await cachedDb.promise;
+  return cachedDb.conn;
+}
+
+// Immediately connect on cold start
+connectToDatabase().catch(console.error);
 
 // Middlewares
 app.use(cors({
@@ -30,29 +46,22 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(fileUpload());
 app.use(express.static('public'));
 
-TZ = 'Asia/Calcutta';
+// Routers
+const custRouter = require('./src/router/customerRouter');
+const empRouter = require('./src/router/employeeRouter');
+const empSerRouter = require('./src/router/employeeServiceRouter');
+const feedbackRouter = require('./src/router/feedbackRouter');
+const serviceRouter = require('./src/router/serviceRouter');
+const orderRouter = require('./src/router/orderRouter');
+const addOnRouter = require('./src/router/addOnRouter');
+const loginRouter = require('./src/router/loginRouter');
+const adminRouter = require('./src/router/adminRouter');
 
-// MongoDB Connect (avoid reconnecting on every call)
-let isConnected = false;
-
-const connectToDatabase = async () => {
-  if (isConnected) return;
-  await mongoose.connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-  });
-  isConnected = true;
-  console.log("✅ MongoDB connected");
-};
-
-connectToDatabase().catch(console.error);
-
-// Test Route
+// Routes
 app.get('/ping', (req, res) => {
   res.send("pong");
 });
 
-// Main Routes
 app.use("/customer", custRouter);
 app.use("/employee", empRouter);
 app.use("/empser", empSerRouter);
@@ -63,5 +72,5 @@ app.use("/addOn", addOnRouter);
 app.use("/login", loginRouter);
 app.use("/admin", adminRouter);
 
-// Default export for Vercel
+// Export for Vercel
 module.exports = serverless(app);
