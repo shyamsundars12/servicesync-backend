@@ -1,11 +1,15 @@
 const express = require('express');
 const app = express();
-const serverless = require('serverless-http'); // Add serverless-http
+const serverless = require('serverless-http'); // For Vercel serverless support
 
-var bodyParser = require('body-parser');
+const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const fileUpload = require('express-fileupload');
-const multer = require('multer');
+
+require('dotenv').config();
+const cors = require('cors');
+
+// Routers
 const custRouter = require('./src/router/customerRouter');
 const empRouter = require('./src/router/employeeRouter');
 const empSerRouter = require('./src/router/employeeServiceRouter');
@@ -15,39 +19,30 @@ const orderRouter = require('./src/router/orderRouter');
 const addOnRouter = require('./src/router/addOnRouter');
 const loginRouter = require('./src/router/loginRouter');
 const adminRouter = require('./src/router/adminRouter');
-require('dotenv').config();
-const cors = require('cors');
 
-// Enable CORS
+// Middleware
 app.use(cors({
     origin: "https://service-sync-frontend.vercel.app",
     methods: ["GET", "POST", "PUT", "DELETE"],
 }));
-
-// Set up Express middleware
 app.use(express.json());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-TZ = 'Asia/Calcutta';
 app.use(fileUpload());
 app.use(express.static('public'));
 
-// MongoDB Connection
+// MongoDB connection
 const url = process.env.MONGO_URI;
 mongoose.connect(url)
-    .then(() => {
-        console.log("Connected to DB");
-    })
-    .catch((err) => {
-        console.log(err);
-    });
+    .then(() => console.log("✅ Connected to MongoDB"))
+    .catch((err) => console.log("❌ MongoDB connection error:", err));
 
-// Basic route
+// Test route
 app.get('/', (req, res) => {
     res.send("Hello from Express API!!!");
 });
 
-// Using Routers
+// API Routes
 app.use("/customer", custRouter);
 app.use("/employee", empRouter);
 app.use("/empser", empSerRouter);
@@ -58,5 +53,5 @@ app.use("/addOn", addOnRouter);
 app.use("/login", loginRouter);
 app.use("/admin", adminRouter);
 
-// Export the handler to work with serverless environments
-module.exports.handler = serverless(app);  // This is crucial for Vercel to handle serverless functions
+// ✅ Correct default export for Vercel serverless
+module.exports = serverless(app);
