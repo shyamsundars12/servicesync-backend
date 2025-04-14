@@ -20,7 +20,7 @@ const app = express();
 
 // === Middleware ===
 app.use(cors({
-  origin: 'https://service-sync-frontend.vercel.app',
+  origin: 'https://servicesync-frontend.vercel.app/',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
 }));
 app.use(express.json());
