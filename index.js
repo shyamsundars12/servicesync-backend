@@ -1,5 +1,4 @@
 const express = require('express');
-const serverless = require('serverless-http');
 const mongoose = require('mongoose');
 const fileUpload = require('express-fileupload');
 const bodyParser = require('body-parser');
@@ -11,42 +10,27 @@ const app = express();
 // Middleware
 app.use(cors({
   origin: "https://servicesync-frontend.vercel.app",
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true
+  methods: ["GET", "POST", "PUT", "DELETE"]
 }));
-
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(fileUpload());
 app.use(express.static('public'));
 
-// ⚠️ Vercel fix: Ensure MongoDB is connected per request (cold start safe)
-const connectToDatabase = async () => {
-  if (mongoose.connection.readyState === 1) {
-    return;
-  }
-
-  try {
-    await mongoose.connect(process.env.MONGO_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true
-    });
-    console.log("✅ MongoDB connected");
-  } catch (error) {
-    console.error("❌ MongoDB connection failed:", error);
-  }
-};
-
-// Test Route (lightweight)
-app.get('/ping', async (req, res) => {
-  res.send("pong ✅");
+// MongoDB Connect
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+}).then(() => {
+  console.log("✅ MongoDB connected");
+}).catch((err) => {
+  console.error("❌ MongoDB error:", err);
 });
 
-// Dynamic Database Connect Wrapper
-app.use(async (req, res, next) => {
-  await connectToDatabase();
-  next();
+// Test Route
+app.get('/ping', (req, res) => {
+  res.send('pong ✅');
 });
 
 // Routers
@@ -60,7 +44,6 @@ const addOnRouter = require('./src/router/addOnRouter');
 const loginRouter = require('./src/router/loginRouter');
 const adminRouter = require('./src/router/adminRouter');
 
-// Route Handlers
 app.use("/customer", custRouter);
 app.use("/employee", empRouter);
 app.use("/empser", empSerRouter);
@@ -71,5 +54,8 @@ app.use("/addOn", addOnRouter);
 app.use("/login", loginRouter);
 app.use("/admin", adminRouter);
 
-// Export for Vercel serverless functions
-module.exports = serverless(app);
+// 🟢 Bind the port for Render (this is what Render is looking for)
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`🚀 Server listening on port ${PORT}`);
+});
